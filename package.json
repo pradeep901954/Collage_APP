@@ -1,0 +1,70 @@
+{
+  "name": "collage",
+  "version": "1.0.0",
+  "description": "A simple CAP project.",
+  "repository": "<Add your repository here>",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@cap-js/hana": "^1",
+    "@sap-cloud-sdk/http-client": "^2.15.0",
+    "@sap-cloud-sdk/resilience": "^3.18.0",
+    "@sap/cds": "^7.9.4",
+    "@sap/cds-hana": "^2",
+    "@sap/xsenv": "^5.2.0",
+    "@sap/xssec": "^4.2.1",
+    "ci": "^2.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^1",
+    "@sap/cds-dk": "^7",
+    "@sap/eslint-plugin-cds": "^3",
+    "@sap/ux-specification": "^1.120.15",
+    "eslint": "^9",
+    "rimraf": "^5.0.5"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch-collage_app": "cds watch --open collage_app/webapp/index.html?sap-ui-xx-viewCache=false",
+    "undeploy": "cf undeploy collage --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1",
+    "watch-leacture": "cds watch --open leacture/webapp/index.html?sap-ui-xx-viewCache=false"
+  },
+  "cds": {
+    "requires": {
+      "db" : "hana",
+      "fiori": {
+        "bypass_draft": true
+      },
+      "auth": "dummy",
+      "destinations": true,
+      "BpaDest": {
+        "kind": "odata-v2",
+        "credentials": {
+          "destination": "Leacture"
+        },
+        "destinationOptions": {
+          "selectionStrategy": "alwaysProvider",
+          "jwt": null
+        }
+      },
+      "TEST_DEST1": {
+        "kind": "odata-v2",
+        "credentials": {
+          "destination": "TEST_DEST"
+        },
+        "destinationOptions": {
+          "selectionStrategy": "alwaysProvider",
+          "jwt": null
+        }
+      }
+    }
+  },
+  "sapux": [
+    "app/collage_app",
+    "app/leacture"
+  ]
+}

@@ -1,0 +1,166 @@
+_schema-version: "3.1"
+ID: collage
+description: A simple CAP project.
+version: 1.0.0
+modules:
+  - name: collage-srv
+    type: nodejs
+    path: gen/srv
+    requires:
+      - name: ConnectivityServiceInstance
+      - name: TLP_Connectivity
+      - name: collage-db
+      - name: uaa_collage
+      - name: collage-destination-service
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    parameters:
+      buildpack: nodejs_buildpack
+      readiness-health-check-http-endpoint: /health
+      readiness-health-check-type: http
+    build-parameters:
+      builder: npm
+  - name: collage-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: collage-destination-service
+        parameters:
+          content-target: true
+      - name: collage_html_repo_host
+        parameters:
+          service-key:
+            name: collage_html_repo_host-key
+      - name: uaa_collage
+        parameters:
+          service-key:
+            name: uaa_collage-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: collage_collage_html_repo_host
+              ServiceInstanceName: collage-html5-app-host-service
+              ServiceKeyName: collage_html_repo_host-key
+              sap.cloud.service: collage
+            - Authentication: OAuth2UserTokenExchange
+              Name: collage_uaa_collage
+              ServiceInstanceName: collage-xsuaa-service
+              ServiceKeyName: uaa_collage-key
+              sap.cloud.service: collage
+          existing_destinations_policy: ignore
+    build-parameters:
+      no-source: true
+  - name: collage-db-deployer
+    type: hdb
+    path: gen/db
+    requires:
+      - name: collage-db
+    parameters:
+      buildpack: nodejs_buildpack
+  - name: collage-app-content
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: collage_html_repo_host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - artifacts:
+            - ccollageapp.zip
+          name: ccollageapp
+          target-path: resources/
+        - artifacts:
+            - lleacture.zip
+          name: lleacture
+          target-path: resources/
+  - name: ccollageapp
+    type: html5
+    path: app/collage_app
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms:
+        []
+  - name: lleacture
+    type: html5
+    path: app/leacture
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms:
+        []
+resources:
+  - name: TLP_Connectivity
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+  - name: ConnectivityServiceInstance
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: connectivity
+      service-plan: lite
+  - name: collage-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: true
+        init_data:
+          instance:
+            destinations:
+              - Authentication: NoAuthentication
+                Name: ui5
+                ProxyType: Internet
+                Type: HTTP
+                URL: https://ui5.sap.com
+              - Authentication: NoAuthentication
+                HTML5.DynamicDestination: true
+                HTML5.ForwardAuthToken: true
+                Name: collage-srv-api
+                ProxyType: Internet
+                Type: HTTP
+                URL: ~{srv-api/srv-url}
+            existing_destinations_policy: update
+        version: 1.0.0
+      service: destination
+      service-name: collage-destination-service
+      service-plan: lite
+    requires:
+      - name: srv-api
+  - name: collage_html_repo_host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-name: collage-html5-app-host-service
+      service-plan: app-host
+  - name: uaa_collage
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-name: collage-xsuaa-service
+      service-plan: application
+  - name: collage-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm ci
+        - npx cds build --production

@@ -1,0 +1,2 @@
+sap.ui.define(["sap/m/MessageToast"],function(e){"use strict";return{Pdf:function(s){e.show("Custom handler invoked.");this.showSideContent("GeneratedFacet1");console.log(this)}}});
+//# sourceMappingURL=Pdf.js.map
